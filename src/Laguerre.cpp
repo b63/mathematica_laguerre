@@ -10,6 +10,23 @@
 
 using namespace arma;
 
+std::shared_ptr<dmat> clamp(const dmat &arr)
+{
+    double mn = arr.min();
+    double mx = arr.max();
+    double range = mx - mn;
+
+    return std::make_shared<dmat>( (arr-mn)/range);
+}
+
+void clamp_inplace(dmat &arr)
+{
+    double mn = arr.min();
+    double mx = arr.max();
+    double range = mx - mn;
+    arr.for_each([=](double &x){ x = (x-mn)/range; });
+}
+
 std::shared_ptr<dmat> laguerre_l(int n, int a, const dmat &x)
 {
     if (n == 0)
@@ -49,21 +66,85 @@ std::shared_ptr<dmat> laguerre_l(int n, int a, const dmat &x)
     return table[n];
 }
 
+void print_2dpnts_mat(const dmat &mat)
+{
+    const size_t h = mat.n_rows;
+    const size_t w = mat.n_cols;
+    for (auto j = 0; j < h; ++j)
+    {
+        for (auto i = 0;i < w; ++i)
+        {
+            std::cout <<  mat(i*h+ j,0) << "," << mat(i*h+ j,1) << "  ";
 
-std::shared_ptr<arma::dmat> get_points(int w, int h, double wscale, double hscale)
+        }
+        std::cout << std::endl;
+    }
+}
+
+void blaze_inplace(dmat &pnts,
+        double angle, double scale, double phase_offset,
+        double amplitude, double amp_offset,
+        size_t x, size_t y, size_t w, size_t h,
+        bool full_cycle, bool clamped)
+{
+    const static double PI = 3.14159265358979l;
+    const double A = (full_cycle ? 1 : 2);
+
+    std::shared_ptr<dmat> xy {get_points(w, h, 1, false, true)};
+
+    dmat offsets {amplitude*cos(2*PI*phase_offset + A*PI*scale*(cos(angle)*xy->col(0) + sin(angle)*xy->col(1))) + amp_offset};
+    offsets.reshape(w, h);
+
+    auto view {pnts(span(x, x+w-1), span(y,y+h-1))};
+    view += offsets;
+    if (clamped) {
+        pnts.for_each([=](double &x) { 
+                if (x < 0)      x = 0;
+                else if (x > 1) x = 1.0l;
+            });
+    } else {
+        view.for_each([](double &v){
+                if (v < 0.0l) {
+                    v = 1 - v + floor(v);
+                } else if (v > 1.0l) {
+                    v = v - floor(v);
+                }
+            });
+    }
+}
+
+
+std::shared_ptr<arma::dmat> get_points(int w, int h, double scale, bool center, bool regular)
 {
     const size_t N = w*h;
-    double hw = w/2.0, hh = h/2.0;
+    double hw = scale*w/2.0;
+    double hh = scale*h/2.0;
 
-    dcolvec xv {linspace<dcolvec>(-hw, hw, w)};
-    dcolvec yv {linspace<dcolvec>(-hh, hh, h)};
+    double wstart = -hw, wend = hw;
+    double hstart = -hh, hend = hh;
+
+    if (!center) {
+        wstart = 0; wend = scale*w;
+        hstart = 0; hend = scale*h;
+    }
+
+    double wdelta = (wend-wstart)/w;
+    double hdelta = (hend-hstart)/h;
+
+    if (regular) {
+        wdelta = scale;
+        hdelta = scale;
+    }
+
+    dcolvec xv {regspace<dcolvec>(wstart, wdelta, wend-wdelta/2)};
+    dcolvec yv {regspace<dcolvec>(hstart, hdelta, hend-hdelta/2)};
 
     std::shared_ptr<dmat> xys {std::make_shared<dmat>(N, 2)};
     for (size_t i = 0; i < h; ++i)
     {
         double v = yv[i];
-        (*xys)(span(i*w, i*w+w-1), 0).for_each([=](double &x){ x = v; });
-        (*xys)(span(i*w, i*w+w-1), 1) = xv;
+        (*xys)(span(i*w, i*w+w-1), 0) = xv;
+        (*xys)(span(i*w, i*w+w-1), 1).for_each([=](double &y){ y = v; });
     }
 
     return xys;
