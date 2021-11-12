@@ -66,9 +66,30 @@ void send_error(const char *type, const char *msg)
     WSPutSymbol(stdlink, "$Failed");
 }
 
+void WS_spherical(double scale, double offset, int w, int h)
+{
+
+    try {
+        std::shared_ptr<dmat> arr {spherical(scale, offset, w, h)};
+
+        double *d_ptr = arr->memptr();
+        long dimensions[] = {h, w};
+        int ret = WSPutDoubleArray(stdlink, d_ptr, dimensions, nullptr, 2);
+        if (!ret)
+            throw WSErrorMessage(stdlink);
+    } catch (const char *s) {
+        send_error("LG::error", s);
+    } catch (const std::exception &e) {
+        send_error("LG::error", e.what());
+    } catch (const std::string &s) {
+        send_error("LG::error", s.c_str());
+    }
+
+}
+
 void WS_blaze(double angle, double scale, double offset, double amp, 
         double amp_offset, int x, int y, int w, int h,
-        int full_cycle, int clamped)
+        int clamped)
 {
     try {
         long *dimensions;
@@ -92,7 +113,7 @@ void WS_blaze(double angle, double scale, double offset, double amp,
         const int H = dimensions[0];
 
         dmat pnts{data, (size_t)W, (size_t)H};
-        blaze_inplace(pnts, angle, scale, offset, amp, amp_offset, x, y, w, h, full_cycle, clamped);
+        blaze_inplace(pnts, angle, scale, offset, amp, amp_offset, x, y, w, h, clamped);
 
         double *d_ptr = pnts.memptr();
         ret = WSPutDoubleArray(stdlink, d_ptr, dimensions, nullptr, 2);

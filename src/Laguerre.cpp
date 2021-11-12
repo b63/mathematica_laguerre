@@ -84,15 +84,24 @@ void print_2dpnts_mat(const dmat &mat)
 void blaze_inplace(dmat &pnts,
         double angle, double scale, double phase_offset,
         double amplitude, double amp_offset,
-        size_t x, size_t y, size_t w, size_t h,
-        bool full_cycle, bool clamped)
+        size_t x, size_t y, size_t w, size_t h, bool clamped)
 {
     const static double PI = 3.14159265358979l;
-    const double A = (full_cycle ? 1 : 2);
+    const static std::function<void(double&)> wrap_fn = [](double &v) {
+                if (v < 0.0l) {
+                    v = 1 - v + floor(v);
+                } else if (v > 1.0l) {
+                    v = v - floor(v);
+                }
+    };
 
     std::shared_ptr<dmat> xy {get_points(w, h, 1, false, true)};
+    dmat offsets {scale*(cos(angle)*xy->col(0) + sin(angle)*xy->col(1))};
+    offsets.for_each(wrap_fn);
+    offsets = amplitude*(phase_offset+offsets) + amp_offset;
 
-    dmat offsets {amplitude*cos(2*PI*phase_offset + A*PI*scale*(cos(angle)*xy->col(0) + sin(angle)*xy->col(1))) + amp_offset};
+    //dmat offsets {amplitude*cos(2*PI*phase_offset + A*PI*scale*(cos(angle)*xy->col(0) + sin(angle)*xy->col(1))) + amp_offset};
+    //dmat offsets {amplitude*(phase_offset + ) + amp_offset};
     offsets.reshape(w, h);
 
     auto view {pnts(span(x, x+w-1), span(y,y+h-1))};
@@ -103,14 +112,28 @@ void blaze_inplace(dmat &pnts,
                 else if (x > 1) x = 1.0l;
             });
     } else {
-        view.for_each([](double &v){
+        view.for_each(wrap_fn);
+    }
+}
+
+
+std::shared_ptr<dmat> spherical(double scale, double offset, size_t w, size_t h)
+{
+    std::shared_ptr<dmat> xy {get_points(w, h, 1, true, true)};
+
+    const static double PI = 3.14159265358979l;
+    const static std::function<void(double&)> wrap_fn = [](double &v) {
                 if (v < 0.0l) {
                     v = 1 - v + floor(v);
                 } else if (v > 1.0l) {
                     v = v - floor(v);
                 }
-            });
-    }
+    };
+
+    std::shared_ptr<dmat> offsets {std::make_shared<dmat>(offset + scale * sqrt(pow(xy->col(0), 2) + pow(xy->col(1),2)))};
+    offsets->for_each(wrap_fn);
+    offsets->reshape(w,h);
+    return offsets;
 }
 
 

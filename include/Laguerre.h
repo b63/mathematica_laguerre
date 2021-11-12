@@ -21,7 +21,8 @@ std::shared_ptr<arma::cx_mat> two_laguerre_guassian(const arma::dmat &r2p,
     );
 void blaze_inplace(arma::dmat &pnts, double angle, double scale, double phase_offset,
         double amplitude, double amp_phase,
-        size_t x, size_t y, size_t w, size_t h, bool full_cycle=true, bool clamped = false);
+        size_t x, size_t y, size_t w, size_t h, bool clamped = false);
 std::shared_ptr<arma::dmat> clamp(const arma::dmat &arr);
+std::shared_ptr<arma::dmat> spherical(double scale, double offset, size_t w, size_t h);
 void clamp_inplace(arma::dmat &arr);
 #endif

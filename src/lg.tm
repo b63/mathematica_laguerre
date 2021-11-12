@@ -57,14 +57,26 @@ void two_laguerre_guassian_mag P((int, int, double,
 
 
 
-void WS_blaze P((double, double, double, double, double, int, int, int, int, int, int));
+void WS_blaze P((double, double, double, double, double, int, int, int, int, int));
 
 :Begin:
 :Function:       WS_blaze
-:Pattern:        Blaze[angle_Real, scale_Real, offset_Real, amplitude_Real, ampPhase_Real, x_Integer, y_Integer, w_Integer, h_Integer, fullCycle_, clamped_, data_]
-:Arguments:      { angle, scale, offset, amplitude, ampPhase, x, y, w, h, fullCycle, clamped, data }
-:ArgumentTypes:  { Real, Real, Real, Real, Real, Integer, Integer, Integer, Integer, Integer, Integer, Manual  }
+:Pattern:        Blaze[angle_Real, scale_Real, offset_Real, amplitude_Real, ampPhase_Real, x_Integer, y_Integer, w_Integer, h_Integer, clamped_, data_]
+:Arguments:      { angle, scale, offset, amplitude, ampPhase, x, y, w, h, clamped, data }
+:ArgumentTypes:  { Real, Real, Real, Real, Real, Integer, Integer, Integer, Integer, Integer, Manual  }
 :ReturnType:     Manual
 :End:
 
-:Evaluate: Blaze::usage = "Blaze[angle, scale, amp, ampPhase, x, y, w, h, fullCycle, clamped, data]"
+:Evaluate: Blaze::usage = "Blaze[angle, scale, amp, ampPhase, x, y, w, h, clamped, data]"
+
+void WS_spherical P((double, double, int, int));
+
+:Begin:
+:Function:       WS_spherical
+:Pattern:        SphericalPhase[scale_Real, offset_Real, w_Integer, h_Integer]
+:Arguments:      { scale, offset, w, h }
+:ArgumentTypes:  { Real, Real, Integer, Integer }
+:ReturnType:     Manual
+:End:
+
+:Evaluate: SphericalPhase::usage = "SphericalPhase[scale, offset, w, h]"
