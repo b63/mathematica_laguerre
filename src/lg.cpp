@@ -23,10 +23,10 @@
 using namespace arma;
 
 extern int WSMain(int, char **);
-//#ifdef WINDOWS_WSTP
-//#include <Winuser.h>
-//extern HWND WSInitializeIcon( HINSTANCE hinstCurrent, int nCmdShow);
-//#endif
+#ifdef WINDOWS_WSTP
+#include <Windows.h>
+extern HWND WSInitializeIcon( HINSTANCE hinstCurrent, int nCmdShow);
+#endif
 
 extern void laguerre_guassian_mag (
         int w, int h, double scale,
@@ -249,23 +249,23 @@ void two_laguerre_guassian_mag (
 }
 
 
-//#if WINDOWS_WSTP
-//
-//int WINAPI WinMain( HINSTANCE hinstCurrent, HINSTANCE hinstPrevious, PSTR lpszCmdLine, int nCmdShow)
-//{
-//    char  buff[512];
-//    char FAR * buff_start = buff;
-//    char FAR * argv[32];
-//    char FAR * FAR * argv_end = argv + 32;
-//
-//    hinstPrevious = hinstPrevious; /* suppress warning */
-//
-//    if( !WSInitializeIcon( hinstCurrent, nCmdShow)) return 1;
-//    WSScanString( argv, &argv_end, &lpszCmdLine, &buff_start);
-//    return WSMain( (int)(argv_end - argv), argv);
-//}
-//
-//#else
+#if WINDOWS_WSTP
+
+int WINAPI WinMain( HINSTANCE hinstCurrent, HINSTANCE hinstPrevious, PSTR lpszCmdLine, int nCmdShow)
+{
+   char  buff[512];
+   char FAR * buff_start = buff;
+   char FAR * argv[32];
+   char FAR * FAR * argv_end = argv + 32;
+
+   hinstPrevious = hinstPrevious; /* suppress warning */
+
+   if( !WSInitializeIcon( hinstCurrent, nCmdShow)) return 1;
+   WSScanString( argv, &argv_end, &lpszCmdLine, &buff_start);
+   return WSMain( (int)(argv_end - argv), argv);
+}
+
+#else
 
 int main(int argc, char* argv[])
 {
@@ -275,4 +275,4 @@ int main(int argc, char* argv[])
     return WSMain(argc, argv);
 }
 
-//#endif
+#endif

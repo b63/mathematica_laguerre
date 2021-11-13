@@ -13,7 +13,7 @@ add_executable (test_laguerre
 
 
 if (WIN32)
-    add_executable (lg
+    add_executable (lg WIN32
         lg.cpp
         lg.tm.cpp
         Laguerre.cpp
