@@ -54,7 +54,7 @@ Spherical[width_,height_,
 		w = IntegerPart@width;
 		h = IntegerPart@height;
 
-		bytes = Check[SphericalPhase[scale,offset,w,h], Abort[]];
+		bytes = Check[Global`SphericalPhase[scale,offset,w,h], Abort[]];
 
 		If[OptionValue[Raw], bytes, Image[bytes]]
 	];
@@ -86,7 +86,7 @@ BlazeImage[image_, angle_,
 		ang =N[angle];
 		cl= If[OptionValue[Clamped], 1, 0];
 
-		bytes=Check[Blaze[ang,scale,offset,amp, ampOffset,x,y,w,h,cl,data], Abort[]];
+		bytes=Check[Global`Blaze[ang,scale,offset,amp, ampOffset,x,y,w,h,cl,data], Abort[]];
 
 		If[OptionValue[Raw], bytes, Image[bytes]]
 	];
@@ -111,7 +111,7 @@ LGMag[l_, p_,
 		z=Re[OptionValue[Z]];
 
 		bytes = Check[
-					LaguerreGuassianMag[w, h, scale, li, pi, k,w0,z,cl],
+					Global`LaguerreGuassianMag[w, h, scale, li, pi, k,w0,z,cl],
 					Abort[]
 				];
 
@@ -137,7 +137,7 @@ LGPhase[l_, p_,
 		w0=N[OptionValue[BeamWaist]];
 		z=N[OptionValue[Z]];
 
-		bytes=Check[LaguerreGuassianPhase[w, h,scale, li, pi, k,w0,z,cl], Abort[]];
+		bytes=Check[Global`LaguerreGuassianPhase[w, h,scale, li, pi, k,w0,z,cl], Abort[]];
 
 		If[OptionValue[Raw], bytes, Image[bytes]]
 	];
@@ -163,7 +163,7 @@ TwoLGPhase[l0_, p0_,l1_,p1_,
 		w0=N[OptionValue[BeamWaist]];
 		z=N[OptionValue[Z]];
 
-		bytes=Check[TwoLaguerreGuassianPhase[
+		bytes=Check[Global`TwoLaguerreGuassianPhase[
 		w, h, scale, l0i, p0i,l1i,p1i, k,w0,z,cl
 		],Abort[]];
 
@@ -192,7 +192,7 @@ TwoLGMag[l0_, p0_,l1_,p1_,
 		w0 = N[OptionValue[BeamWaist]];
 		z = N[OptionValue[Z]];
 
-		bytes = Check[TwoLaguerreGuassianMag[w, h, scale,l0i, p0i,l1i,p1i, k,w0,z,cl], Abort[]];
+		bytes = Check[Global`TwoLaguerreGuassianMag[w, h, scale,l0i, p0i,l1i,p1i, k,w0,z,cl], Abort[]];
 
 		If[OptionValue[Raw], bytes, Image[bytes]]
 	];
