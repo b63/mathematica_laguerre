@@ -213,10 +213,11 @@ std::shared_ptr<cx_mat> two_laguerre_guassian(const dmat &r2p,
         const std::array<double, 3> params1
     )
 {
+    const static double PI = 3.14159265358979l;
     std::shared_ptr<cx_mat> lg0 {laguerre_guassian(r2p, modes0, params0)};
     std::shared_ptr<cx_mat> lg1 {laguerre_guassian(r2p, modes1, params1)};
 
-    std::complex<double> factor {exp(std::complex<double>(0, 1-modes0[1]-modes1[1]))};
+    std::complex<double> factor {exp(std::complex<double>(0, PI*(1-modes0[1]-modes1[1])))};
     *lg0 += factor * (*lg1);
 
     return lg0;
