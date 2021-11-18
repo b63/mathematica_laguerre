@@ -16,7 +16,10 @@
 #include <cstdio>
 #include <wstp.h>
 #include <cstring>
+
+#define _USE_MATH_DEFINES
 #include <math.h>
+
 #include "Laguerre.h"
 
 #define ERR_MSG_LEN 512
