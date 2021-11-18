@@ -4,6 +4,8 @@
 #include <array>
 #include <iomanip>
 #include <cstdio>
+
+#define _USE_MATH_DEFINES
 #include <math.h>
 
 #include "Laguerre.h"
