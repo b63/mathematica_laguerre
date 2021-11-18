@@ -16,6 +16,7 @@
 #include <cstdio>
 #include <wstp.h>
 #include <cstring>
+#include <math.h>
 #include "Laguerre.h"
 
 #define ERR_MSG_LEN 512
@@ -33,6 +34,16 @@ extern void laguerre_guassian_mag (
         int l, int p, double k, double w0, double z, 
         int clamp);
 
+extern void laguerre_guassian_mag_zx (
+        int w, int h, double scale,
+        int l, int p, double k, double w0, double x,
+        int usex, int clamp);
+
+extern void laguerre_guassian_phase_zx (
+        int w, int h, double scale,
+        int l, int p, double k, double w0, double x,
+        int usex, int clamp);
+
 extern void laguerre_guassian_phase (
         int w, int h, double scale,
         int l, int p, double k, double w0, double z,
@@ -48,6 +59,18 @@ extern void two_laguerre_guassian_mag (
         int w, int h, double scale,
         int l0, int p0, int l1, int p1,
         double k, double w0, double z,
+        int clamp);
+
+extern void two_laguerre_guassian_mag_zx (
+        int w, int h, double scale,
+        int l0, int p0, int l1, int p1,
+        double k, double w0, double x, int usex,
+        int clamp);
+
+extern void two_laguerre_guassian_phase_zx (
+        int w, int h, double scale,
+        int l0, int p0, int l1, int p1,
+        double k, double w0, double x, int usex,
         int clamp);
 
 extern void blaze(const double *arr, double angle);
@@ -158,6 +181,62 @@ void laguerre_guassian_mag (
     }
 }
 
+void laguerre_guassian_mag_zx (
+        int w, int h, double scale,
+        int l, int p, double k, double w0, double x, 
+        int usex, int clamp)
+{
+    try {
+        dmat zx {*get_points(w,h, scale)};
+
+        dmat r2pz { *cartesian_to_r2pz(zx, x, usex) };
+        cx_mat res_cx { *laguerre_guassian_zx(r2pz, std::array<int,2>{l, p},
+                std::array<double,2>{k, w0}) };
+        dmat res_mag { abs(res_cx) };
+
+        if (clamp) {
+            clamp_inplace(res_mag);
+        }
+
+        const double *data = res_mag.memptr();
+        int dims[]         = {h, w};
+        int d              = 2;
+
+        int ret = WSPutReal64Array(stdlink, data, dims, nullptr, d);
+        if (!ret)
+            throw WSErrorMessage(stdlink);
+    } catch (std::exception &e) {
+        send_error("LG::error", e.what());
+    }
+}
+
+void laguerre_guassian_phase_zx (
+        int w, int h, double scale,
+        int l, int p, double k, double w0, double x, 
+        int usex, int clamp)
+{
+    try {
+        dmat zx {*get_points(w,h, scale)};
+
+        dmat r2pz {*cartesian_to_r2pz(zx, x, usex)};
+        cx_mat res_cx { *laguerre_guassian_zx(r2pz, std::array<int,2>{l, p},
+                std::array<double,2>{k, w0}) };
+        dmat res_phase { arg(res_cx) + M_PI };
+
+        if (clamp)
+            res_phase /= 2*M_PI;
+
+        const double *data = res_phase.memptr();
+        int dims[]         = {h, w};
+        int d              = 2;
+
+        int ret = WSPutReal64Array(stdlink, data, dims, nullptr, d);
+        if (!ret)
+            throw WSErrorMessage(stdlink);
+    } catch (std::exception &e) {
+        send_error("LG::error", e.what());
+    }
+}
 
 void laguerre_guassian_phase (
         int w, int h, double scale,
@@ -170,16 +249,18 @@ void laguerre_guassian_phase (
         dmat rp {*cartesian_to_r2p(xys)};
         cx_mat res_cx { *laguerre_guassian(rp, std::array<int,2>{l, p},
                 std::array<double,3>{k, w0, z}) };
-        dmat res_mag { arg(res_cx) };
+        dmat res_phase { (arg(res_cx) + M_PI)};
 
-        const double *data = res_mag.memptr();
+        const double *data = res_phase.memptr();
         int dims[]         = {h, w};
         int d              = 2;
 
         if (clamp)
-            clamp_inplace(res_mag);
+            res_phase /= 2*M_PI;
 
-        WSPutReal64Array(stdlink, data, dims, nullptr, d);
+        int ret = WSPutReal64Array(stdlink, data, dims, nullptr, d);
+        if (!ret)
+            throw WSErrorMessage(stdlink);
     } catch (std::exception &e) {
         send_error("LG::error", e.what());
     }
@@ -202,20 +283,89 @@ void two_laguerre_guassian_phase (
                 std::array<double, 3>{k, w0, z}
                 )};
 
-        dmat res_phase { arg(res_cx) };
+        dmat res_phase { arg(res_cx) + M_PI };
         if (clamp)
-            clamp_inplace(res_phase);
+            res_phase /= 2*M_PI;
 
         const double *data = res_phase.memptr();
         int dims[]         = {h, w};
         int d              = 2;
 
-        WSPutReal64Array(stdlink, data, dims, nullptr, d);
+        int ret = WSPutReal64Array(stdlink, data, dims, nullptr, d);
+        if (!ret)
+            throw WSErrorMessage(stdlink);
     } catch (std::exception &e) {
         send_error("LG::error", e.what());
     }
 }
 
+
+void two_laguerre_guassian_phase_zx (
+        int w, int h, double scale,
+        int l0, int p0, int l1, int p1,
+        double k, double w0, double x, int usex,
+        int clamp)
+{
+    try {
+        dmat zx {*get_points(w,h,scale)};
+        dmat r2pz {*cartesian_to_r2pz(zx, x, usex)};
+
+        cx_mat res_cx { *two_laguerre_guassian_zx(r2pz, 
+                std::array<int, 2>{l0, p0},
+                std::array<int, 2>{l1, p1},
+                std::array<double, 2>{k, w0},
+                std::array<double, 2>{k, w0}
+                )};
+
+        dmat res_phase { arg(res_cx) + M_PI };
+        if (clamp)
+            res_phase /= 2*M_PI;
+
+        const double *data = res_phase.memptr();
+        int dims[]         = {h, w};
+        int d              = 2;
+
+        int ret = WSPutReal64Array(stdlink, data, dims, nullptr, d);
+        if (!ret)
+            throw WSErrorMessage(stdlink);
+    } catch (std::exception &e) {
+        send_error("LG::error", e.what());
+    }
+}
+
+
+void two_laguerre_guassian_mag_zx (
+        int w, int h, double scale,
+        int l0, int p0, int l1, int p1,
+        double k, double w0, double x, int usex,
+        int clamp)
+{
+    try {
+        dmat zx {*get_points(w,h,scale)};
+        dmat r2pz {*cartesian_to_r2pz(zx, x, usex)};
+
+        cx_mat res_cx { *two_laguerre_guassian_zx(r2pz, 
+                std::array<int, 2>{l0, p0},
+                std::array<int, 2>{l1, p1},
+                std::array<double, 2>{k, w0},
+                std::array<double, 2>{k, w0}
+                )};
+
+        dmat res_mag { abs(res_cx) };
+        if (clamp)
+            clamp_inplace(res_mag);
+
+        const double *data = res_mag.memptr();
+        int dims[]         = {h, w};
+        int d              = 2;
+
+        int ret = WSPutReal64Array(stdlink, data, dims, nullptr, d);
+        if (!ret)
+            throw WSErrorMessage(stdlink);
+    } catch (std::exception &e) {
+        send_error("LG::error", e.what());
+    }
+}
 
 void two_laguerre_guassian_mag (
         int w, int h, double scale,
@@ -242,7 +392,9 @@ void two_laguerre_guassian_mag (
         int dims[]         = {h, w};
         int d              = 2;
 
-        WSPutReal64Array(stdlink, data, dims, nullptr, d);
+        int ret = WSPutReal64Array(stdlink, data, dims, nullptr, d);
+        if (!ret)
+            throw WSErrorMessage(stdlink);
     } catch (std::exception &e) {
         send_error("LG::error", e.what());
     }

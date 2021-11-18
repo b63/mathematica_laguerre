@@ -195,6 +195,7 @@ std::shared_ptr<cx_mat> laguerre_guassian(const dmat &r2p,
     double w  = w0 * sqrt(1+ z2/zR2);
     double w2  = w*w;
     double R  = z+zR2/z;
+
     double psi = atan(z/zR);
 
     dmat phi     {-l*r2p.col(1) - psi*(2*p+l+1) + k*z};
@@ -206,6 +207,39 @@ std::shared_ptr<cx_mat> laguerre_guassian(const dmat &r2p,
     return std::make_shared<cx_mat>(conv_to<cx_mat>::from(mag) % phi_p);
 }
 
+std::shared_ptr<cx_mat> laguerre_guassian_zx(const dmat &r2pz,
+        const std::array<int, 2>    &mode,
+        const std::array<double, 2> &params)
+{
+    int l = mode.at(0);
+    int p = mode.at(1);
+
+    double k  = params.at(0);
+    double w0 = params.at(1);
+    dmat z {r2pz.col(2)};
+    // w(z) = w0 * sqrt(1 + 4*z^2/(k w0^2)^2)
+    // R(z) = (z^2+(k w0^2/2)^2 )/z
+    // psi(z) = arctan(2 z/(k w0^2))
+
+    // compute w(z), R(z), and psi(z)
+    double zR = k*w0*w0/2;
+    dmat z2 {pow(z, 2)};
+    double zR2 = zR*zR;
+
+    dmat w {w0 * sqrt(1+ z2/zR2)};
+    dmat w2inv {pow(w%w, -1)};
+    dmat R {z+zR2/z};
+    dmat psi{atan(z/zR)};
+
+    dmat phi {-l*r2pz.col(1) - psi*(2*p+l+1) + k*z};
+    cx_mat phi_p {exp(std::complex<double>(0,1)*conv_to<cx_mat>::from(phi))};
+
+    dmat mag { w0/w % exp(-r2pz.col(0)%w2inv) % pow(sqrt(2*r2pz.col(0))/w,l)  };
+    mag %= *laguerre_l(p, l, 2*r2pz.col(0)%w2inv);
+
+    return std::make_shared<cx_mat>(conv_to<cx_mat>::from(mag) % phi_p);
+}
+
 std::shared_ptr<cx_mat> two_laguerre_guassian(const dmat &r2p,
         const std::array<int, 2> modes0,
         const std::array<int, 2> modes1,
@@ -213,11 +247,28 @@ std::shared_ptr<cx_mat> two_laguerre_guassian(const dmat &r2p,
         const std::array<double, 3> params1
     )
 {
-    const static double PI = 3.14159265358979l;
     std::shared_ptr<cx_mat> lg0 {laguerre_guassian(r2p, modes0, params0)};
     std::shared_ptr<cx_mat> lg1 {laguerre_guassian(r2p, modes1, params1)};
 
-    std::complex<double> factor {exp(std::complex<double>(0, PI*(1-modes0[1]-modes1[1])))};
+    // std::complex<double> factor {exp(std::complex<double>(0, M_PI*(1-modes0[1]-modes1[1])))};
+    std::complex<double> factor {exp(std::complex<double>(0, M_PI))};
+    *lg0 += factor * (*lg1);
+
+    return lg0;
+}
+
+std::shared_ptr<cx_mat> two_laguerre_guassian_zx(const dmat &r2pz,
+        const std::array<int, 2> modes0,
+        const std::array<int, 2> modes1,
+        const std::array<double, 2> params0,
+        const std::array<double, 2> params1
+    )
+{
+    std::shared_ptr<cx_mat> lg0 {laguerre_guassian_zx(r2pz, modes0, params0)};
+    std::shared_ptr<cx_mat> lg1 {laguerre_guassian_zx(r2pz, modes1, params1)};
+
+    // std::complex<double> factor {exp(std::complex<double>(0, M_PI*(1-modes0[1]-modes1[1])))};
+    std::complex<double> factor {exp(std::complex<double>(0, M_PI))};
     *lg0 += factor * (*lg1);
 
     return lg0;
@@ -228,6 +279,25 @@ std::shared_ptr<dmat> cartesian_to_r2p (const dmat &xy)
     std::shared_ptr<dmat> result {std::make_shared<dmat>(size(xy))};
     result->col(0) = sum(pow(xy, 2), 1);
     result->col(1) = atan2(xy.col(1), xy.col(0));
+
+    return result;
+}
+
+std::shared_ptr<dmat> cartesian_to_r2pz (const dmat &zx, double y, bool ZX)
+{
+    // zx : z (col 0), x (col 1)
+    std::shared_ptr<dmat> result {std::make_shared<dmat>(zx.n_rows, 3)};
+    dmat ymat {zx.n_rows, 1, fill::value(y)};
+    result->col(0) = sum(pow(zx.col(1), 2), 1) + y*y;
+    result->col(2) = zx.col(0);
+
+    if (ZX) {
+        // using y = x for all points
+        result->col(1) = atan2(zx.col(1), ymat);
+    } else {
+        // using x = x for all points
+        result->col(1) = atan2(ymat, zx.col(1));
+    }
 
     return result;
 }
