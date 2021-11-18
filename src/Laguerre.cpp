@@ -4,6 +4,7 @@
 #include <array>
 #include <iomanip>
 #include <cstdio>
+#include <math.h>
 
 #include "Laguerre.h"
 
