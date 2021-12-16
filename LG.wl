@@ -8,7 +8,8 @@ LGPhase::usage = "LGPhase[l, p] Returns image of phase of LG mode l, p. Default 
 TwoLGMag::uage = "TwoLGMag[l0, p0, l1, p1] Returns image of magnitude of sum of two LG modes. Default options  Width \[Rule] 500, Height \[Rule] 500, WaveVector \[Rule] 1.0, BeamWaist \[Rule] 10.0, ScalingFactor \[Rule] 1.0, Z \[Rule] 0.01, Clamp \[Rule] True, and Raw \[Rule] False."  ;
 TwoLGPhase::usage = "TwoLGPhase[l0, p0, l1, p1] Returns image of phase of sum of two LG modes. Default options  Width \[Rule] 500, Height \[Rule] 500, WaveVector \[Rule] 1.0, BeamWaist \[Rule] 10.0, ScalingFactor \[Rule] 1.0, Z \[Rule] 0.01, Clamp \[Rule] True, and Raw \[Rule] False.";
 StartLG::usage = "StartLG[path, binpath] Install WSTP executable. Must be run before anything else. 'path' is the absolute path of repository. path/binpath should resolve to path of the WSTP binary.";
-BlazeImage::usage = "BlazeImage[image, angle] Returns 'image' with blazing added on top. Default options AmplitudeOffset \[Rule] 0, Frequency \[Rule] 0, PhaseOffset \[Rule] 0, Size \[Rule] {None, None}, Start \[Rule] {0,0}, Clamped \[Rule] False, and Raw \[Rule] False.";
+BlazeImage::usage = "BlazeImage[image, angle] Returns 'image' with blazing added on top. 
+Default options Frequency \[Rule] 0.5, PhaseOffset \[Rule] 0, Size \[Rule] {None, None}, Start \[Rule] {0,0}, Clamped \[Rule] False, and Raw \[Rule] False.";
 Spherical::usage = "Spherical[width, height] Returns image of quadratic phase profile. Default options ScalingFactor \[Rule] 1, PhaseOffset \[Rule] 0, and Raw \[Rule] False.";
 GetLGLink::usage = "GetLGLink[] returns the Link object.";
 CloseLG::usage = "CloseLG[] close the Link if it exists."
@@ -84,9 +85,7 @@ Spherical[width_,height_,
 
 BlazeImage[image_, angle_,
 	OptionsPattern[{
-		Amplitude-> 1, 
-		AmplitudeOffset-> 0, 
-		Frequency-> 1,
+		Frequency-> 0.5,
 		PhaseOffset-> 0,
 		Size->{None, None}, 
 		Start-> {0,0},
@@ -94,21 +93,19 @@ BlazeImage[image_, angle_,
 		Raw-> False
 	}]] := 
 	Module[ 
-		{scale,w,h,x,y,data,window,ang,offset, amp, ampOffset,fc,cl},
+		{scale,w,h,x,y,data,window,ang,offset, fc,cl},
 		scale = N[OptionValue[Frequency]];
 		data=If[ImageQ@image,ImageData[image], image];
 		window=OptionValue[Size];
 		w=IntegerPart@If[NumberQ@window[[1]],window[[1]], Dimensions[data][[2]]];
 		h=IntegerPart@If[NumberQ@window[[2]],window[[2]], Dimensions[data][[1]]];
-		amp=N[OptionValue[Amplitude]];
-		ampOffset=N[OptionValue[AmplitudeOffset]];
 		x =IntegerPart[OptionValue[Start][[1]]];
 		y=IntegerPart[OptionValue[Start][[2]]];
 		offset=N[OptionValue[PhaseOffset]];
 		ang =N[angle];
 		cl= If[OptionValue[Clamped], 1, 0];
 
-		bytes=Check[Global`Blaze[ang,scale,offset,amp, ampOffset,x,y,w,h,cl,data], Abort[]];
+		bytes=Check[Global`Blaze[ang,scale,offset,x,y,w,h,cl,data], Abort[]];
 
 		If[OptionValue[Raw], bytes, Image[bytes]]
 	];

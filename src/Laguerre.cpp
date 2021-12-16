@@ -86,37 +86,36 @@ void print_2dpnts_mat(const dmat &mat)
 
 void blaze_inplace(dmat &pnts,
         double angle, double scale, double phase_offset,
-        double amplitude, double amp_offset,
         size_t x, size_t y, size_t w, size_t h, bool clamped)
 {
     const static double PI = 3.14159265358979l;
-    const static std::function<void(double&)> wrap_fn = [](double &v) {
-                if (v < 0.0l) {
-                    v = 1 - v + floor(v);
-                } else if (v > 1.0l) {
-                    v = v - floor(v);
-                }
-    };
 
     std::shared_ptr<dmat> xy {get_points(w, h, 1, false, true)};
     dmat offsets {scale*(cos(angle)*xy->col(0) + sin(angle)*xy->col(1))};
-    offsets.for_each(wrap_fn);
-    offsets = amplitude*(phase_offset+offsets) + amp_offset;
+    offsets = phase_offset+offsets;
 
     //dmat offsets {amplitude*cos(2*PI*phase_offset + A*PI*scale*(cos(angle)*xy->col(0) + sin(angle)*xy->col(1))) + amp_offset};
     //dmat offsets {amplitude*(phase_offset + ) + amp_offset};
     offsets.reshape(w, h);
 
     auto view {pnts(span(x, x+w-1), span(y,y+h-1))};
+
+    //std::ofstream outfile;
+    //outfile.open("/tmp/log", ios::out | ios::app);
+    //outfile << std::setprecision(22);
+
     view += offsets;
     if (clamped) {
-        pnts.for_each([=](double &x) { 
+        view.for_each([](double &x) { 
                 if (x < 0)      x = 0;
                 else if (x > 1) x = 1.0l;
             });
     } else {
-        view.for_each(wrap_fn);
+        //view(span(112,150), span(69,69)).raw_print(outfile, "before wrap");
+        view -= floor(view);
+        //view(span(112,150), span(69,69)).raw_print(outfile, "after wrap");
     }
+    //outfile.close();
 }
 
 

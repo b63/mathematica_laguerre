@@ -26,7 +26,7 @@ endif()
 set(CMAKE_INCLUDE_CURRENT_DIR ON)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
-include_directories(AFTER "${WSTPLINK_PATH}/CompilerAdditions"
+include_directories(BEFORE "${WSTPLINK_PATH}/CompilerAdditions"
     ${CMAKE_SOURCE_DIR}/include)
 
 

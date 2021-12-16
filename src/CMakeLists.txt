@@ -19,7 +19,7 @@ if (WIN32)
         Laguerre.cpp
     )
 
-    link_directories("${CMAKE_SOURCE_DIR}/lib")
+    link_directories("${CMAKE_SOURCE_DIR}/lib_win32")
     include_directories(AFTER "${ARMADILLO_PATH}/include")
 
     # statically link with vc++ runtime
@@ -52,7 +52,6 @@ if (WIN32)
 	    "${ARMADILLO_PATH}/examples/lib_win64/libopenblas.lib"
 	)
 else()
-
     add_executable (lg
         lg.cpp
         lg.tm.cpp
@@ -60,12 +59,14 @@ else()
     )
 
     link_directories("${WSTPLINK_PATH}/CompilerAdditions")
-    target_link_libraries (lg
-        rt uuid dl pthread "${WSTPLINK_PATH}/CompilerAdditions/libWSTP64i4.so"
-        armadillo
-        )
+    target_link_libraries(lg armadillo
+        "${WSTPLINK_PATH}/CompilerAdditions/libWSTP64i4.a")
+    target_link_libraries (test_laguerre armadillo)
 
-    target_link_libraries (test_laguerre
-            armadillo
-        )
+    set_target_properties(lg PROPERTIES LINK_SEARCH_START_STATIC 1)
+    set_target_properties(lg PROPERTIES LINK_SEARCH_END_STATIC 1)
+    set(CMAKE_EXE_LINKER_FLAGS "-static-libstdc++")
+
+    target_link_libraries (lg rt uuid dl pthread)
+
 endif()

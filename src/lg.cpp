@@ -113,8 +113,8 @@ void WS_spherical(double scale, double offset, int w, int h)
 
 }
 
-void WS_blaze(double angle, double scale, double offset, double amp, 
-        double amp_offset, int x, int y, int w, int h,
+void WS_blaze(double angle, double scale, double offset,
+         int x, int y, int w, int h,
         int clamped)
 {
     try {
@@ -139,7 +139,7 @@ void WS_blaze(double angle, double scale, double offset, double amp,
         const int H = dimensions[0];
 
         dmat pnts{data, (size_t)W, (size_t)H};
-        blaze_inplace(pnts, angle, scale, offset, amp, amp_offset, x, y, w, h, clamped);
+        blaze_inplace(pnts, angle, scale, offset, x, y, w, h, clamped);
 
         double *d_ptr = pnts.memptr();
         ret = WSPutDoubleArray(stdlink, d_ptr, dimensions, nullptr, 2);
