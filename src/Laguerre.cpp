@@ -118,12 +118,45 @@ void blaze_inplace(dmat &pnts,
     //outfile.close();
 }
 
+std::unique_ptr<cx_dmat> propagate(const cx_dmat &field, double delta, double z, double k, bool ft)
+{
+    constexpr const static double TAU = 2*3.14159265358979l;
+    constexpr const static double TAU2 = TAU*TAU;
+    cx_dmat fft {delta*delta*fft2(field)};
+    const size_t N = field.n_rows;
+    double delta_f = 1/(delta*N); // field should be square matrix
+    double k2 = k*k;
+
+    dmat kxky {delta_f * *get_shifted_points(N)};
+    dcolvec kx2 {TAU2 * kxky.col(0) % kxky.col(0)};
+    dcolvec ky2 {TAU2 * kxky.col(1) % kxky.col(1)};
+    cx_dcolvec kz2 {std::complex<double>(1,0)*(k2 -kx2 - ky2)};
+    cx_dcolvec kz {sqrt(kz2)};
+
+    cx_dcolvec propagator {exp(std::complex<double>(0,z)*kz)};
+    cx_dmat ft_field {reshape(propagator, N, N)};
+    //abs(ft_field).raw_print(std::cout, "propagator mag");
+    ft_field %= fft;
+
+    if (ft)
+    {
+        auto pfft {std::make_unique<cx_dmat>(shift(shift(ft_field, N/2, 0), N/2, 1))};
+        return pfft;
+    }
+
+    std::unique_ptr<cx_dmat> pfield {std::make_unique<cx_dmat>(1.0l/(delta*delta)* ifft2(ft_field))};
+
+    // field.raw_print(std::cout, "field:");
+    // pfield->raw_print(std::cout, "pfield:");
+
+    return pfield;
+}
+
 
 std::shared_ptr<dmat> spherical(double scale, double offset, size_t w, size_t h)
 {
     std::shared_ptr<dmat> xy {get_points(w, h, 1, true, true)};
 
-    const static double PI = 3.14159265358979l;
     const static std::function<void(double&)> wrap_fn = [](double &v) {
                 if (v < 0.0l) {
                     v = 1 - v + floor(v);
@@ -136,6 +169,26 @@ std::shared_ptr<dmat> spherical(double scale, double offset, size_t w, size_t h)
     offsets->for_each(wrap_fn);
     offsets->reshape(w,h);
     return offsets;
+}
+
+std::unique_ptr<dmat> get_shifted_points(size_t n)
+{
+    // N should be even
+    double N = static_cast<double>(n);
+    dcolvec cycle_i (N);
+    cycle_i(span(0, N/2-1)) = regspace<dcolvec>(0, 1, N/2.0-1);
+    cycle_i(span(N/2, N-1)) = regspace<dcolvec>(-N/2.0, -1);
+
+    size_t pnts = N*N;
+    std::unique_ptr<dmat> xys {std::make_unique<dmat>(pnts, 2)};
+    for (size_t i = 0; i < N; ++i)
+    {
+        double v = cycle_i[i];
+        (*xys)(span(i*N, i*N+N-1), 0) = cycle_i;
+        (*xys)(span(i*N, i*N+N-1), 1).for_each([=](double &y){ y = v; });
+    }
+
+    return xys;
 }
 
 

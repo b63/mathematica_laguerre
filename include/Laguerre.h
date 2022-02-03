@@ -35,5 +35,8 @@ std::shared_ptr<arma::cx_mat> two_laguerre_guassian_zx(const arma::dmat &r2pz,
     );
 std::shared_ptr<arma::dmat> cartesian_to_r2pz (const arma::dmat &zx, double y, bool ZX);
 
+std::unique_ptr<arma::dmat> get_shifted_points(size_t N);
+std::unique_ptr<arma::cx_dmat> propagate(const arma::cx_dmat &field, double delta, double z, double k, bool ft);
+
 void clamp_inplace(arma::dmat &arr);
 #endif

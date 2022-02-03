@@ -3,3 +3,5 @@ build_win32/
 compile_commands.json
 Makefile
 .vscode/
+armadillo/
+.cache/

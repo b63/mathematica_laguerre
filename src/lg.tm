@@ -123,6 +123,7 @@ void WS_blaze P((double, double, double, int, int, int, int, int));
 
 :Evaluate: Blaze::usage = "Blaze[angle, scale, offset, x, y, w, h, clamped, data]"
 
+
 void WS_spherical P((double, double, int, int));
 
 :Begin:
@@ -134,3 +135,17 @@ void WS_spherical P((double, double, int, int));
 :End:
 
 :Evaluate: SphericalPhase::usage = "SphericalPhase[scale, offset, w, h]"
+
+
+
+void WS_propagate P((double, double, double, int));
+
+:Begin:
+:Function:       WS_propagate
+:Pattern:        Propagate[k_Real, delta_Real, z_Real, ft_Integer, data_]
+:Arguments:      { k, delta, z, ft, data }
+:ArgumentTypes:  { Real, Real, Real, Integer, Manual }
+:ReturnType:     Manual
+:End:
+
+:Evaluate: Propagate::usage = "Propagate[k, delta, z, ft, data]"

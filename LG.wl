@@ -14,6 +14,7 @@ Spherical::usage = "Spherical[width, height] Returns image of quadratic phase pr
 GetLGLink::usage = "GetLGLink[] returns the Link object.";
 CloseLG::usage = "CloseLG[] close the Link if it exists."
 StartLGDebug::usage = "StartLGDebug[name] connect to WSTP link with given link name (for debugging)";
+PropagateField::usage = "PropagateField[]";
 
 
 Begin["`Private`"];
@@ -251,6 +252,43 @@ TwoLGMag[l0_, p0_,l1_,p1_,
 			Abort[]];
 
 		If[OptionValue[Raw], bytes, Image[bytes]]
+	];
+
+
+PropagateField[field_, dz_, 
+	OptionsPattern[Join[
+		{Raw-> False, FourierSpace -> False, AmpRange -> Null, AmpColorMap -> "TemperatureMap"},
+		DEFAULTS
+	]]]:= 
+	Module[
+		{delta,dim,w,ft,z,k,data,p1,p2,amp,phase,arange,amax},
+		
+		delta = N[OptionValue[ScalingFactor]];
+		dim = Dimensions[field];
+		If[Length@dim != 3 || dim[[1]] != 2 || dim[[2]] != dim[[3]], 
+			Message[Propagate::error, "field must be 2 x N x N"]; Abort[]];
+		w = dim[[1]];
+		w = IntegerPart[OptionValue[Width]];
+		
+		ft = If[OptionValue[FourierSpace],1, 0];
+		z = N[dz];
+
+		k = N[OptionValue[WaveVector]];
+		{amp, phase} = Global`Propagate[k, delta, z, ft, field];
+		phase = Mod[phase, 2\[Pi]]/(2\[Pi]);
+		
+		If[OptionValue[Raw], 
+		{amp,phase},
+		arange = If[ListQ@OptionValue[AmpRange], OptionValue[AmpRange],
+				amax = Max[amp];
+				If[amax > 1, {0, amax}, {0, 1}]
+			];
+		p1 = ArrayPlot[amp, PlotLegends -> Automatic, PlotLabel -> "Amplitude", 
+			ColorFunction -> OptionValue[AmpColorMap], PlotRange -> arange, ColorFunctionScaling -> False];
+		p2 = ArrayPlot[phase, PlotLegends -> BarLegend[{Hue, {0,1}}], PlotLabel -> "Phase", 
+			ColorFunction -> Hue, PlotRange -> {0, 1}, ColorFunctionScaling -> False];
+		{p1, p2}
+		]
 	];
 
 

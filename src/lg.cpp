@@ -113,6 +113,57 @@ void WS_spherical(double scale, double offset, int w, int h)
 
 }
 
+void WS_propagate(double k, double delta, double z, int ft)
+{
+    //try {
+        long *dimensions;
+        char **heads;
+        long depth;
+        double *data;
+
+        int ret = WSGetDoubleArray(stdlink, &data, &dimensions, &heads, &depth);
+        if (!ret)
+            throw WSErrorMessage(stdlink);
+
+        if (depth != 3) {
+            throw std::string("size of array must be 3, size ") 
+                    + std::to_string(depth) + std::string(" given");
+        } else if (strcmp(*heads, "List") || strcmp(*(heads+1), "List") || strcmp(*(heads+2), "List")) {
+            throw std::string("head is not type {List,List,List}, instead ") + std::string(*heads)
+                + std::string(", ") + std::string(*(heads+1))
+                + std::string(", ") + std::string(*(heads+2));
+        } else if (dimensions[0] != 2) {
+            throw std::string("third must be of size 2, given is ") + std::to_string(dimensions[2]);
+        } else if (dimensions[1] != dimensions[2]) {
+            throw std::string("must be square domain, given ") + std::to_string(dimensions[1]);
+                  std::string("x") + std::to_string(dimensions[2]);
+        }
+
+        const int N = dimensions[1];
+
+        const dcube data_arr {data, (size_t) N, (size_t) N, 2, false};
+        // data_arr.raw_print(std::cout, "WS data_arr:");
+        cx_dmat field {data_arr.slice(0)%exp(std::complex<double>(0, 1)*data_arr.slice(1))};
+        // field.raw_print(std::cout, "WS field:");
+
+        std::unique_ptr<cx_dmat> prop_field {propagate(field, delta, z, k, ft != 0)};
+        dcube prop_field_real {join_slices(abs(*prop_field), arg(*prop_field))};
+
+        double *d_ptr = prop_field_real.memptr();
+        ret = WSPutDoubleArray(stdlink, d_ptr, dimensions, nullptr, 3);
+        WSReleaseDoubleArray(stdlink, data, dimensions, heads, depth);
+        if (!ret)
+            throw WSErrorMessage(stdlink);
+
+    //} catch (const char *s) {
+    //    send_error("LG::error", s);
+    //} catch (const std::exception &e) {
+    //    send_error("LG::error", e.what());
+    //} catch (const std::string &s) {
+    //    send_error("LG::error", s.c_str());
+    //}
+}
+
 void WS_blaze(double angle, double scale, double offset,
          int x, int y, int w, int h,
         int clamped)
