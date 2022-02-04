@@ -29,7 +29,7 @@ int main(int argc, char *argv[])
     //cx_mat res {*laguerre_guassian(test, modes, params)};
 
     //res.raw_print("");
-    dmat zx {*get_points(5,5,1)};
+    dmat zx {*get_points_reg(5,5,1)};
     dmat rpz {*cartesian_to_r2pz(zx, 0, true)};
 
     cx_mat res_cx { *laguerre_guassian_zx(rpz, 

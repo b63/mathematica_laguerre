@@ -3,10 +3,10 @@
 BeginPackage["LG`"];
 
 
-LGMag::usage = "LGMag[l, p] Returns image of magnitude of LG mode l, p. Default options Width \[Rule] 500, Height \[Rule] 500, WaveVector \[Rule] 1.0, BeamWaist \[Rule] 10.0, ScalingFactor \[Rule] 1.0, Z \[Rule] 0.01, Clamp \[Rule] True, and Raw \[Rule] False.";
-LGPhase::usage = "LGPhase[l, p] Returns image of phase of LG mode l, p. Default options Width \[Rule] 500, Height \[Rule] 500, WaveVector \[Rule] 1.0, BeamWaist \[Rule] 10.0, ScalingFactor \[Rule] 1.0, Z \[Rule] 0.01, Clamp \[Rule] True, and Raw \[Rule] False.";
-TwoLGMag::uage = "TwoLGMag[l0, p0, l1, p1] Returns image of magnitude of sum of two LG modes. Default options  Width \[Rule] 500, Height \[Rule] 500, WaveVector \[Rule] 1.0, BeamWaist \[Rule] 10.0, ScalingFactor \[Rule] 1.0, Z \[Rule] 0.01, Clamp \[Rule] True, and Raw \[Rule] False."  ;
-TwoLGPhase::usage = "TwoLGPhase[l0, p0, l1, p1] Returns image of phase of sum of two LG modes. Default options  Width \[Rule] 500, Height \[Rule] 500, WaveVector \[Rule] 1.0, BeamWaist \[Rule] 10.0, ScalingFactor \[Rule] 1.0, Z \[Rule] 0.01, Clamp \[Rule] True, and Raw \[Rule] False.";
+LGMag::usage = "LGMag[l, p] Returns image of magnitude of LG mode l, p. Default options Size \[Rule] {256, 256}, WaveVector \[Rule] 2\[Pi], BeamWaist \[Rule] \!\(\*SuperscriptBox[\(10\), \(3\)]\), Delta \[Rule] 10.0, Z \[Rule] 0.01, Clamp \[Rule] True, and Raw \[Rule] False.";
+LGPhase::usage = "LGPhase[l, p] Returns image of phase of LG mode l, p. Default options Size \[Rule] {256, 256}, WaveVector \[Rule] 2\[Pi], BeamWaist \[Rule] \!\(\*SuperscriptBox[\(10\), \(3\)]\), Delta \[Rule] 10.0, Z \[Rule] 0.01, Clamp \[Rule] True, and Raw \[Rule] False.";
+TwoLGMag::uage = "TwoLGMag[l0, p0, l1, p1] Returns image of magnitude of sum of two LG modes. Default options  Size \[Rule] {256, 256}, WaveVector \[Rule] 2\[Pi], BeamWaist \[Rule] \!\(\*SuperscriptBox[\(10\), \(3\)]\), Delta \[Rule] 10.0, Z \[Rule] 0.01, Clamp \[Rule] True, and Raw \[Rule] False."  ;
+TwoLGPhase::usage = "TwoLGPhase[l0, p0, l1, p1] Returns image of phase of sum of two LG modes. Default options  Size \[Rule] {256, 256}, WaveVector \[Rule] 2\[Pi], BeamWaist \[Rule] \!\(\*SuperscriptBox[\(10\), \(3\)]\), Delta \[Rule] 10.0, Z \[Rule] 0.01, Clamp \[Rule] True, and Raw \[Rule] False.";
 StartLG::usage = "StartLG[path, binpath] Install WSTP executable. Must be run before anything else. 'path' is the absolute path of repository. path/binpath should resolve to path of the WSTP binary.";
 BlazeImage::usage = "BlazeImage[image, angle] Returns 'image' with blazing added on top. 
 Default options Frequency \[Rule] 0.5, PhaseOffset \[Rule] 0, Size \[Rule] {None, None}, Start \[Rule] {0,0}, Clamped \[Rule] False, and Raw \[Rule] False.";
@@ -14,7 +14,7 @@ Spherical::usage = "Spherical[width, height] Returns image of quadratic phase pr
 GetLGLink::usage = "GetLGLink[] returns the Link object.";
 CloseLG::usage = "CloseLG[] close the Link if it exists."
 StartLGDebug::usage = "StartLGDebug[name] connect to WSTP link with given link name (for debugging)";
-PropagateField::usage = "PropagateField[]";
+PropagateField::usage = "PropagateField[field, dz] returns field propagated downstream by dz. Default options WaveVector \[Rule] 2\[Pi], Delta \[Rule] 10.0, FourierSpace \[Rule] False, AmpRange \[Rule] Null, AmpColorMap \[Rule] ThermometerColors, Raw \[Rule] False";
 
 
 Begin["`Private`"];
@@ -23,11 +23,10 @@ Begin["`Private`"];
 LGpath = None;
 LGlink = None;
 DEFAULTS = {
-	Width -> 500,
-	Height -> 500,
-	WaveVector -> 1.0,
-	BeamWaist -> 10.0,
-	ScalingFactor -> 1.0,
+	Size -> {256, 256},
+	WaveVector -> 2\[Pi],
+	BeamWaist -> 10^3,
+	Delta -> 10.0,
 	Plane -> "XY",
 	Z -> 0.01,
 	X -> 0,
@@ -66,13 +65,13 @@ GetLGLink[] := LGlink;
 
 Spherical[width_,height_,
 	OptionsPattern[{
-		ScalingFactor-> 1,
+		Delta-> 1,
 		PhaseOffset-> 0,
 		Raw-> False
 	}]] := 
 	Module[
 		{scale,window, data, offset,w, h, bytes},
-		scale = N[OptionValue[ScalingFactor]];
+		scale = N[OptionValue[Delta]];
 		offset = N[OptionValue[PhaseOffset]];
 		
 		w = IntegerPart@width;
@@ -118,10 +117,17 @@ LGMag[l_, p_,
 		DEFAULTS
 	]]] := 
 	Module[
-		{scale,w0,w,h,cl,z,bytes,k,li,pi,plane,transverse,usex,v},
-		scale = N[OptionValue[ScalingFactor]];
-		w=IntegerPart[OptionValue[Width]];
-		h=IntegerPart[OptionValue[Height]];
+		{deltaw, deltah,w0,w,h,cl,z,bytes,k,li,pi,plane,transverse,usex,v},
+		If[ListQ@OptionValue[Delta],
+			{deltaw, deltah} = N/@OptionValue[Delta],
+			deltaw = N[OptionValue[Delta]];
+			deltah = deltaw;
+		];
+		If[ListQ@OptionValue[Size], 
+			{w, h} = IntegerPart/@OptionValue[Size],
+			w = IntegerPart[OptionValue[Size]]; 
+			h = w;
+		];
 		cl=If[OptionValue[Clamp],1, 0];
 		li =IntegerPart[l];
 		pi=IntegerPart[p];
@@ -137,8 +143,8 @@ LGMag[l_, p_,
 
 		bytes = Check[
 					If[!transverse,
-						Global`LaguerreGuassianMag[w, h, scale, li, pi, k,w0,z,cl],
-						Global`LaguerreGuassianMagZX[w, h, scale, li, pi, k, w0, v, usex,cl]
+						Global`LaguerreGuassianMag[w, h, deltaw, deltah, li, pi, k,w0,z,cl],
+						Global`LaguerreGuassianMagZX[w, h, deltaw, deltah, li, pi, k, w0, v, usex,cl]
 					],
 					Abort[]
 				];
@@ -153,10 +159,17 @@ LGPhase[l_, p_,
 		DEFAULTS
 	]]]:= 
 	Module[
-		{scale,w0,w,h,cl,z,bytes,k,li,pi,plane, usex, transverse,v},
-		scale = N[OptionValue[ScalingFactor]];
-		w = IntegerPart[OptionValue[Width]];
-		h = IntegerPart[OptionValue[Height]];
+		{deltaw,deltah,w0,w,h,cl,z,bytes,k,li,pi,plane, usex, transverse,v},
+		If[ListQ@OptionValue[Delta],
+			{deltaw, deltah} = N/@OptionValue[Delta],
+			deltaw = N[OptionValue[Delta]];
+			deltah = deltaw;
+		];
+		If[ListQ@OptionValue[Size], 
+			{w, h} = IntegerPart/@OptionValue[Size],
+			w = IntegerPart[OptionValue[Size]]; 
+			h = w;
+		];
 		cl = If[OptionValue[Clamp],1, 0];
 		li = IntegerPart[l];
 		pi = IntegerPart[p];
@@ -172,8 +185,8 @@ LGPhase[l_, p_,
 
 		bytes = Check[
 					If[!transverse,
-						Global`LaguerreGuassianPhase[w, h, scale, li, pi, k,w0,z,cl],
-						Global`LaguerreGuassianPhaseZX[w, h, scale, li, pi, k, w0, v,usex, cl]
+						Global`LaguerreGuassianPhase[w, h, deltaw, deltah, li, pi, k,w0,z,cl],
+						Global`LaguerreGuassianPhaseZX[w, h, deltaw, deltah, li, pi, k, w0, v,usex, cl]
 					],
 					Abort[]
 				];
@@ -188,10 +201,17 @@ TwoLGPhase[l0_, p0_,l1_,p1_,
 		DEFAULTS
 	]]]:= 
 	Module[
-		{scale,w0,w,h,cl,z,bytes,k,l1i,l0i,p1i,p0i,usex,transverse,v,plane},
-		scale = N[OptionValue[ScalingFactor]];
-		w=IntegerPart[OptionValue[Width]];
-		h=IntegerPart[OptionValue[Height]];
+		{deltaw, deltah,w0,w,h,cl,z,bytes,k,l1i,l0i,p1i,p0i,usex,transverse,v,plane},
+		If[ListQ@OptionValue[Delta],
+			{deltaw, deltah} = N/@OptionValue[Delta],
+			deltaw = N[OptionValue[Delta]];
+			deltah = deltaw;
+		];
+		If[ListQ@OptionValue[Size], 
+			{w, h} = IntegerPart/@OptionValue[Size],
+			w = IntegerPart[OptionValue[Size]]; 
+			h = w;
+		];
 		cl=If[OptionValue[Clamp],1, 0];
 		l0i =IntegerPart[l0];
 		p0i =IntegerPart[p0];
@@ -209,8 +229,8 @@ TwoLGPhase[l0_, p0_,l1_,p1_,
 
 		bytes=Check[
 			If[!transverse,
-				Global`TwoLaguerreGuassianPhase[w, h, scale, l0i, p0i,l1i,p1i, k,w0,z,cl],
-				Global`TwoLaguerreGuassianPhaseZX[w, h, scale, l0i, p0i,l1i,p1i, k,w0,v,usex,cl]
+				Global`TwoLaguerreGuassianPhase[w, h, deltaw, deltah, l0i, p0i,l1i,p1i, k,w0,z,cl],
+				Global`TwoLaguerreGuassianPhaseZX[w, h, deltaw, deltah, l0i, p0i,l1i,p1i, k,w0,v,usex,cl]
 			],
 			Abort[]];
 
@@ -224,11 +244,17 @@ TwoLGMag[l0_, p0_,l1_,p1_,
 		DEFAULTS
 	]]]:= 
 	Module[
-		{scale,w0,w,h,cl,z,bytes,k,l1i,l0i,p1i,p0i,usex,transverse,v,plane},
-		
-		scale = N[OptionValue[ScalingFactor]];
-		w = IntegerPart[OptionValue[Width]];
-		h = IntegerPart[OptionValue[Height]];
+		{deltaw, deltah, w0,w,h,cl,z,bytes,k,l1i,l0i,p1i,p0i,usex,transverse,v,plane},
+		If[ListQ@OptionValue[Delta],
+			{deltaw, deltah} = N/@OptionValue[Delta],
+			deltaw = N[OptionValue[Delta]];
+			deltah = deltaw;
+		];
+		If[ListQ@OptionValue[Size], 
+			{w, h} = IntegerPart/@OptionValue[Size],
+			w = IntegerPart[OptionValue[Size]]; 
+			h = w;
+		];
 		cl = If[OptionValue[Clamp],1, 0];
 		l0i = IntegerPart[l0];
 		p0i = IntegerPart[p0];
@@ -246,8 +272,8 @@ TwoLGMag[l0_, p0_,l1_,p1_,
 
 		bytes=Check[
 			If[!transverse,
-				Global`TwoLaguerreGuassianMag[w, h, scale, l0i, p0i,l1i,p1i, k,w0,z,cl],
-				Global`TwoLaguerreGuassianMagZX[w, h, scale, l0i, p0i,l1i,p1i, k,w0,v,usex,cl]
+				Global`TwoLaguerreGuassianMag[w, h, deltaw, deltah, l0i, p0i,l1i,p1i, k,w0,z,cl],
+				Global`TwoLaguerreGuassianMagZX[w, h, deltaw, deltah, l0i, p0i,l1i,p1i, k,w0,v,usex,cl]
 			],
 			Abort[]];
 
@@ -257,37 +283,37 @@ TwoLGMag[l0_, p0_,l1_,p1_,
 
 PropagateField[field_, dz_, 
 	OptionsPattern[Join[
-		{Raw-> False, FourierSpace -> False, AmpRange -> Null, AmpColorMap -> "TemperatureMap"},
+		{Raw-> False, FourierSpace -> False, AmpRange -> Null, 
+		AmpColorMap -> "ThermometerColors", TitleSuffix -> "", AmpColorFunctionScaling -> False, AmpImageSize -> Automatic, PhaseImageSize -> Automatic},
 		DEFAULTS
 	]]]:= 
 	Module[
-		{delta,dim,w,ft,z,k,data,p1,p2,amp,phase,arange,amax},
+		{delta,dim,ft,z,k,data,p1,p2,amp,phase,arange,amax},
 		
-		delta = N[OptionValue[ScalingFactor]];
+		delta = N[OptionValue[Delta]];
 		dim = Dimensions[field];
 		If[Length@dim != 3 || dim[[1]] != 2 || dim[[2]] != dim[[3]], 
 			Message[Propagate::error, "field must be 2 x N x N"]; Abort[]];
-		w = dim[[1]];
-		w = IntegerPart[OptionValue[Width]];
 		
 		ft = If[OptionValue[FourierSpace],1, 0];
 		z = N[dz];
 
 		k = N[OptionValue[WaveVector]];
 		{amp, phase} = Global`Propagate[k, delta, z, ft, field];
-		phase = Mod[phase, 2\[Pi]]/(2\[Pi]);
 		
 		If[OptionValue[Raw], 
-		{amp,phase},
-		arange = If[ListQ@OptionValue[AmpRange], OptionValue[AmpRange],
+			{amp,phase},
+			arange = If[ListQ@OptionValue[AmpRange], OptionValue[AmpRange],
 				amax = Max[amp];
 				If[amax > 1, {0, amax}, {0, 1}]
 			];
-		p1 = ArrayPlot[amp, PlotLegends -> Automatic, PlotLabel -> "Amplitude", 
-			ColorFunction -> OptionValue[AmpColorMap], PlotRange -> arange, ColorFunctionScaling -> False];
-		p2 = ArrayPlot[phase, PlotLegends -> BarLegend[{Hue, {0,1}}], PlotLabel -> "Phase", 
-			ColorFunction -> Hue, PlotRange -> {0, 1}, ColorFunctionScaling -> False];
-		{p1, p2}
+			p1 = ArrayPlot[amp, PlotLegends -> Automatic, PlotLabel -> "Amplitude"<>OptionValue[TitleSuffix], 
+				ColorFunction -> OptionValue[AmpColorMap], PlotRange -> arange, ColorFunctionScaling -> OptionValue[AmpColorFunctionScaling],
+				ImageSize -> OptionValue[AmpImageSize]];
+			p2 = ArrayPlot[phase, PlotLegends -> BarLegend[{Hue, {0,1}}], PlotLabel -> "Phase"<>OptionValue[TitleSuffix], 
+				ColorFunction -> Hue, PlotRange -> {0, 1}, ColorFunctionScaling -> False,
+				ImageSize -> OptionValue[PhaseImageSize]];
+			{p1, p2}
 		]
 	];
 

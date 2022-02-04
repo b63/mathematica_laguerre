@@ -115,7 +115,8 @@ void WS_spherical(double scale, double offset, int w, int h)
 
 void WS_propagate(double k, double delta, double z, int ft)
 {
-    //try {
+    constexpr const static double TAU = 2*M_PI;
+    try {
         long *dimensions;
         char **heads;
         long depth;
@@ -143,11 +144,18 @@ void WS_propagate(double k, double delta, double z, int ft)
 
         const dcube data_arr {data, (size_t) N, (size_t) N, 2, false};
         // data_arr.raw_print(std::cout, "WS data_arr:");
-        cx_dmat field {data_arr.slice(0)%exp(std::complex<double>(0, 1)*data_arr.slice(1))};
+        cx_dmat field {data_arr.slice(0) % exp(std::complex<double>(0, TAU)*data_arr.slice(1))};
         // field.raw_print(std::cout, "WS field:");
 
         std::unique_ptr<cx_dmat> prop_field {propagate(field, delta, z, k, ft != 0)};
-        dcube prop_field_real {join_slices(abs(*prop_field), arg(*prop_field))};
+        dmat ph {arg(*prop_field)/TAU};
+        dcube prop_field_real {
+            join_slices(
+                    abs(*prop_field),
+                    ph.transform([](double phase) {
+                            return phase < 0 ? 1.0l+phase : phase;
+                        })
+                )};
 
         double *d_ptr = prop_field_real.memptr();
         ret = WSPutDoubleArray(stdlink, d_ptr, dimensions, nullptr, 3);
@@ -155,13 +163,13 @@ void WS_propagate(double k, double delta, double z, int ft)
         if (!ret)
             throw WSErrorMessage(stdlink);
 
-    //} catch (const char *s) {
-    //    send_error("LG::error", s);
-    //} catch (const std::exception &e) {
-    //    send_error("LG::error", e.what());
-    //} catch (const std::string &s) {
-    //    send_error("LG::error", s.c_str());
-    //}
+    } catch (const char *s) {
+        send_error("LG::error", s);
+    } catch (const std::exception &e) {
+        send_error("LG::error", e.what());
+    } catch (const std::string &s) {
+        send_error("LG::error", s.c_str());
+    }
 }
 
 void WS_blaze(double angle, double scale, double offset,
@@ -208,12 +216,12 @@ void WS_blaze(double angle, double scale, double offset,
 }
 
 void laguerre_guassian_mag (
-        int w, int h, double scale,
+        int w, int h, double deltaw, double deltah, 
         int l, int p, double k, double w0, double z,
         int clamp)
 {
     try {
-        dmat xys {*get_points(w,h, scale)};
+        dmat xys {*get_points_irreg(w,h, deltaw, deltah)};
 
         dmat rp {*cartesian_to_r2p(xys)};
         cx_mat res_cx { *laguerre_guassian(rp, std::array<int,2>{l, p},
@@ -236,12 +244,12 @@ void laguerre_guassian_mag (
 }
 
 void laguerre_guassian_mag_zx (
-        int w, int h, double scale,
+        int w, int h, double deltaw, double deltah,
         int l, int p, double k, double w0, double x, 
         int usex, int clamp)
 {
     try {
-        dmat zx {*get_points(w,h, scale)};
+        dmat zx {*get_points_irreg(w, h, deltaw, deltah)};
 
         dmat r2pz { *cartesian_to_r2pz(zx, x, usex) };
         cx_mat res_cx { *laguerre_guassian_zx(r2pz, std::array<int,2>{l, p},
@@ -265,20 +273,23 @@ void laguerre_guassian_mag_zx (
 }
 
 void laguerre_guassian_phase_zx (
-        int w, int h, double scale,
+        int w, int h, double deltaw, double deltah, 
         int l, int p, double k, double w0, double x, 
         int usex, int clamp)
 {
     try {
-        dmat zx {*get_points(w,h, scale)};
+        dmat zx {*get_points_irreg(w,h, deltaw, deltah)};
 
         dmat r2pz {*cartesian_to_r2pz(zx, x, usex)};
         cx_mat res_cx { *laguerre_guassian_zx(r2pz, std::array<int,2>{l, p},
                 std::array<double,2>{k, w0}) };
-        dmat res_phase { arg(res_cx) + M_PI };
+        dmat res_phase { arg(res_cx)/(2*M_PI)};
 
-        if (clamp)
-            res_phase /= 2*M_PI;
+        if (clamp) {
+            res_phase.for_each([](double &phase) {
+                    phase = (phase < 0.0l ? 1.0l+phase : phase);
+                });
+        }
 
         const double *data = res_phase.memptr();
         int dims[]         = {h, w};
@@ -293,24 +304,27 @@ void laguerre_guassian_phase_zx (
 }
 
 void laguerre_guassian_phase (
-        int w, int h, double scale,
+        int w, int h, double deltaw, double deltah,
         int l, int p, double k, double w0, double z,
         int clamp)
 {
     try {
-        dmat xys {*get_points(w,h, scale)};
+        dmat xys {*get_points_irreg(w,h, deltaw, deltah)};
 
         dmat rp {*cartesian_to_r2p(xys)};
         cx_mat res_cx { *laguerre_guassian(rp, std::array<int,2>{l, p},
                 std::array<double,3>{k, w0, z}) };
-        dmat res_phase { (arg(res_cx) + M_PI)};
+        dmat res_phase { arg(res_cx)/(2*M_PI)};
 
         const double *data = res_phase.memptr();
         int dims[]         = {h, w};
         int d              = 2;
 
-        if (clamp)
-            res_phase /= 2*M_PI;
+        if (clamp) {
+            res_phase.for_each([](double &phase) {
+                    phase = (phase < 0.0l ? 1.0l+phase : phase);
+                });
+        }
 
         int ret = WSPutReal64Array(stdlink, data, dims, nullptr, d);
         if (!ret)
@@ -321,13 +335,13 @@ void laguerre_guassian_phase (
 }
 
 void two_laguerre_guassian_phase (
-        int w, int h, double scale,
+        int w, int h, double deltaw, double deltah,
         int l0, int p0, int l1, int p1,
         double k, double w0, double z,
         int clamp)
 {
     try {
-        dmat xys {*get_points(w,h,scale)};
+        dmat xys {*get_points_irreg(w, h, deltaw, deltah)};
         dmat rp {*cartesian_to_r2p(xys)};
 
         cx_mat res_cx { *two_laguerre_guassian(rp, 
@@ -337,9 +351,12 @@ void two_laguerre_guassian_phase (
                 std::array<double, 3>{k, w0, z}
                 )};
 
-        dmat res_phase { arg(res_cx) + M_PI };
-        if (clamp)
-            res_phase /= 2*M_PI;
+        dmat res_phase { arg(res_cx)/(2*M_PI)};
+        if (clamp) {
+            res_phase.for_each([](double &phase) {
+                    phase = (phase < 0.0l ? 1.0l+phase : phase);
+                });
+        }
 
         const double *data = res_phase.memptr();
         int dims[]         = {h, w};
@@ -355,13 +372,13 @@ void two_laguerre_guassian_phase (
 
 
 void two_laguerre_guassian_phase_zx (
-        int w, int h, double scale,
+        int w, int h, double deltaw, double deltah,
         int l0, int p0, int l1, int p1,
         double k, double w0, double x, int usex,
         int clamp)
 {
     try {
-        dmat zx {*get_points(w,h,scale)};
+        dmat zx {*get_points_irreg(w,h,deltaw, deltah)};
         dmat r2pz {*cartesian_to_r2pz(zx, x, usex)};
 
         cx_mat res_cx { *two_laguerre_guassian_zx(r2pz, 
@@ -371,9 +388,12 @@ void two_laguerre_guassian_phase_zx (
                 std::array<double, 2>{k, w0}
                 )};
 
-        dmat res_phase { arg(res_cx) + M_PI };
-        if (clamp)
-            res_phase /= 2*M_PI;
+        dmat res_phase { arg(res_cx)/(2*M_PI)};
+        if (clamp) {
+            res_phase.for_each([](double &phase) {
+                    phase = (phase < 0.0l ? 1.0l+phase : phase);
+                });
+        }
 
         const double *data = res_phase.memptr();
         int dims[]         = {h, w};
@@ -389,13 +409,13 @@ void two_laguerre_guassian_phase_zx (
 
 
 void two_laguerre_guassian_mag_zx (
-        int w, int h, double scale,
+        int w, int h, double deltaw, double deltah,
         int l0, int p0, int l1, int p1,
         double k, double w0, double x, int usex,
         int clamp)
 {
     try {
-        dmat zx {*get_points(w,h,scale)};
+        dmat zx {*get_points_irreg(w,h,deltaw, deltah)};
         dmat r2pz {*cartesian_to_r2pz(zx, x, usex)};
 
         cx_mat res_cx { *two_laguerre_guassian_zx(r2pz, 
@@ -422,13 +442,13 @@ void two_laguerre_guassian_mag_zx (
 }
 
 void two_laguerre_guassian_mag (
-        int w, int h, double scale,
+        int w, int h, double deltaw, double deltah,
         int l0, int p0, int l1, int p1,
         double k, double w0, double z,
         int clamp)
 {
     try {
-        dmat xys {*get_points(w,h,scale)};
+        dmat xys {*get_points_irreg(w,h, deltaw, deltah)};
         dmat rp {*cartesian_to_r2p(xys)};
 
         cx_mat res_cx { *two_laguerre_guassian(rp, 

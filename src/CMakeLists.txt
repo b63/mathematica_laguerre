@@ -1,6 +1,6 @@
 add_custom_command(
     OUTPUT  lg.tm.cpp
-    COMMAND ${WSTPTOOLS_PATH}/wsprep ${CMAKE_CURRENT_SOURCE_DIR}/lg.tm  -o lg.tm.cpp
+    COMMAND ${WSTPTOOLS_PATH}/wsprep.exe ${CMAKE_CURRENT_SOURCE_DIR}/lg.tm  -o lg.tm.cpp
     DEPENDS lg.tm
     WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
     )

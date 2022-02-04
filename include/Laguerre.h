@@ -11,7 +11,8 @@ std::shared_ptr<arma::cx_mat> laguerre_guassian(const arma::dmat &r2p,
         const std::array<int, 2> &mode,
         const std::array<double, 3> &params);
 
-std::shared_ptr<arma::dmat> get_points(int w, int h, double scale, bool center=true, bool regular=false);
+std::shared_ptr<arma::dmat> get_points_reg  (int w, int h, double scale, bool center=true);
+std::shared_ptr<arma::dmat> get_points_irreg(int w, int h, double deltaw, double deltah, bool center=true);
 std::shared_ptr<arma::dmat> cartesian_to_r2p (const arma::dmat &xy);
 std::shared_ptr<arma::cx_mat> two_laguerre_guassian(const arma::dmat &r2p,
         const std::array<int, 2> modes0,
